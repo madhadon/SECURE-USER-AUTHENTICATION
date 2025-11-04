@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Task-04 — Real-Time Chat (BroadcastChannel demo)</title>
+<style>
+  :root{--bg:#071021;--card:#fff;--accent:#0b6b3a;--accent-2:#b8860b;--muted:#8b97a3}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,Segoe UI,Arial;background:linear-gradient(180deg,#071021,#06202c);min-height:100vh;color:#062226;display:flex;align-items:center;justify-content:center;padding:20px}
+  .app{width:100%;max-width:1100px;background:rgba(255,255,255,0.98);border-radius:12px;overflow:hidden;display:grid;grid-template-columns:300px 1fr;gap:0;box-shadow:0 30px 70px rgba(0,0,0,0.5)}
+  .sidebar{padding:18px;background:linear-gradient(180deg,rgba(6,34,34,0.03),rgba(184,134,11,0.02))}
+  .main{padding:14px}
+  h2{margin:0 0 8px 0;font-size:18px;color:#05331f}
+  label{font-size:13px;color:#27433a;margin-top:8px;display:block}
+  input,select,textarea{width:100%;padding:8px;border-radius:8px;border:1px solid #e8e8e8;margin-top:6px}
+  button{padding:8px 10px;border-radius:8px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;font-weight:700;cursor:pointer}
+  .muted{color:var(--muted);font-size:13px}
+  .rooms{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+  .room-btn{display:flex;justify-content:space-between;align-items:center;padding:8px;border-radius:8px;background:#fff;border:1px solid #eef3ee;cursor:pointer}
+  .chat-header{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+  .messages{height:56vh;overflow:auto;padding:12px;border-radius:8px;background:linear-gradient(180deg,#f8fff8,#fff);border:1px solid #eef7ee}
+  .message{padding:8px;border-radius:8px;margin-bottom:8px;max-width:70%;}
+  .me{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;margin-left:auto}
+  .them{background:#f3f7f3}
+  .meta{font-size:12px;color:var(--muted);margin-top:6px}
+  .presence{display:flex;flex-direction:column;margin-top:12px;gap:6px}
+  .user-row{display:flex;justify-content:space-between;align-items:center;padding:6px;border-radius:6px;border:1px solid #f1f6f1;background:#fff}
+  .compose{display:flex;gap:8px;margin-top:8px}
+  .compose input{flex:1}
+  .small{font-size:13px;color:var(--muted)}
+  @media (max-width:900px){.app{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+  <div class="app" id="app">
+    <div class="sidebar">
+      <h2>Real-Time Chat</h2>
+      <div class="small">Simulated realtime via BroadcastChannel (multi-tab)</div>
+
+      <label>Username</label>
+      <input id="username" placeholder="your name (unique)" />
+
+      <label>Presence</label>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <button id="loginBtn">Sign In</button>
+        <button id="logoutBtn" style="display:none;background:#ddd;color:#222">Sign Out</button>
+      </div>
+
+      <label style="margin-top:12px">Rooms</label>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <input id="newRoom" placeholder="room name" />
+        <button id="addRoom">Add</button>
+      </div>
+
+      <div class="rooms" id="rooms"></div>
+
+      <div class="presence">
+        <label style="margin-top:10px">Online Users</label>
+        <div id="presenceList" style="margin-top:6px"></div>
+      </div>
+
+      <div style="margin-top:12px"><small class="muted">Tip: open another tab to test real-time messages and presence.</small></div>
+    </div>
+
+    <div class="main">
+      <div class="chat-header">
+        <div>
+          <div id="currentRoomTitle"><strong>Lobby</strong></div>
+          <div class="small" id="roomMeta">Public room</div>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+          <select id="privateUserSelect"><option value="">-- Private: select user --</option></select>
+          <button id="clearChat" style="background:#eee;color:#222;border:1px solid #ddd">Clear</button>
+        </div>
+      </div>
+
+      <div class="messages" id="messages"></div>
+
+      <div class="compose">
+        <input id="msgInput" placeholder="Type a message..." />
+        <button id="sendBtn">Send</button>
+      </div>
+
+      <div class="meta" style="margin-top:10px">Chat history is stored locally. Private messages are delivered to recipient tab(s) only.</div>
+    </div>
+  </div>
+
+<script>
+/*
+  Frontend-only chat:
+  - BroadcastChannel 'chat_channel' used for multi-tab real-time messages.
+  - localStorage used for persistence: rooms, messages, users presence.
+  - Supports rooms and private messages (by setting toUser).
+*/
+
+const CHANNEL_NAME = 'chat_channel_v1'
+const bc = ('BroadcastChannel' in window) ? new BroadcastChannel(CHANNEL_NAME) : null
+const LS_KEY = 'task04_chat_store_v1'
+
+let store = {
+  users: {},        // userId -> {name, lastSeen}
+  rooms: ['Lobby'],
+  messages: {},     // room -> [ {id, from, to (optional), text, ts} ]
+  currentUser: null
+}
+
+function save(){ localStorage.setItem(LS_KEY, JSON.stringify(store)) }
+function load(){
+  const raw = localStorage.getItem(LS_KEY)
+  if(raw) try { store = JSON.parse(raw) } catch(e){ console.warn(e) }
+}
+load()
+if(!store.rooms) store.rooms = ['Lobby']
+if(!store.messages) store.messages = {}
+for(const r of store.rooms) if(!store.messages[r]) store.messages[r] = []
+
+// UI elements
+const usernameEl = document.getElementById('username')
+const loginBtn = document.getElementById('loginBtn'), logoutBtn = document.getElementById('logoutBtn')
+const addRoomBtn = document.getElementById('addRoom'), newRoomEl = document.getElementById('newRoom')
+const roomsWrap = document.getElementById('rooms')
+const presenceList = document.getElementById('presenceList')
+const messagesEl = document.getElementById('messages'), msgInput = document.getElementById('msgInput'), sendBtn = document.getElementById('sendBtn')
+const currentRoomTitle = document.getElementById('currentRoomTitle'), roomMeta = document.getElementById('roomMeta')
+const privateUserSelect = document.getElementById('privateUserSelect'), clearChatBtn = document.getElementById('clearChat')
+
+let currentRoom = 'Lobby'
+renderRooms()
+renderMessages(currentRoom)
+renderPresence()
+updatePrivateSelect()
+
+// generate a simple user id
+function uid(){ return 'u_'+Math.random().toString(36).slice(2,9) }
+
+function broadcast(obj){
+  if(bc) bc.postMessage(obj)
+  // also persist locally for other tabs to pick up via storage event (fallback)
+  localStorage.setItem('chat_last_event', JSON.stringify({obj,ts:Date.now()}))
+}
+
+// presence heartbeat
+let heartbeatTimer = null
+function startPresence(name, id){
+  store.currentUser = {id, name}
+  store.users[id] = {name, lastSeen: Date.now()}
+  save()
+  broadcast({type:'presence', userId:id, name})
+  if(heartbeatTimer) clearInterval(heartbeatTimer)
+  heartbeatTimer = setInterval(()=> {
+    store.users[id].lastSeen = Date.now(); save()
+    broadcast({type:'presence', userId:id, name})
+  }, 5000)
+}
+
+function stopPresence(){
+  if(!store.currentUser) return
+  const id = store.currentUser.id
+  broadcast({type:'presence-leave', userId:id})
+  delete store.users[id]
+  save()
+  store.currentUser = null
+  if(heartbeatTimer) clearInterval(heartbeatTimer)
+}
+
+// handle incoming BroadcastChannel messages
+if(bc){
+  bc.onmessage = (ev) => handleIncoming(ev.data)
+}
+// also listen to storage events for fallback across some environments
+window.addEventListener('storage', (ev)=>{
+  if(ev.key === 'chat_last_event' && ev.newValue){
+    try{ const payload = JSON.parse(ev.newValue); if(payload && payload.obj) handleIncoming(payload.obj) }catch(e){}
+  }
+})
+
+function handleIncoming(msg){
+  if(!msg || !msg.type) return
+  switch(msg.type){
+    case 'presence':
+      store.users[msg.userId] = {name: msg.name, lastSeen: Date.now()}
+      save(); renderPresence(); updatePrivateSelect()
+      break
+    case 'presence-leave':
+      delete store.users[msg.userId]; save(); renderPresence(); updatePrivateSelect()
+      break
+    case 'message':
+      if(msg.to){ // private: deliver only to involved parties
+        // store both in room named 'pm:{userA}:{userB}' canonical
+        const room = canonicalPMRoom(msg.from, msg.to)
+        if(!store.messages[room]) store.messages[room] = []
+        store.messages[room].push(msg)
+        save()
+        if(shouldRenderRoom(room)) renderMessages(room)
+      } else {
+        if(!store.messages[msg.room]) store.messages[msg.room] = []
+        store.messages[msg.room].push(msg); save()
+        if(msg.room === currentRoom) renderMessages(currentRoom)
+      }
+      break
+  }
+}
+
+function shouldRenderRoom(room){ // if current visible is same
+  if(room === currentRoom) return true
+  // also render if private conversation open
+  return false
+}
+
+// login / logout
+loginBtn.addEventListener('click', ()=>{
+  const name = usernameEl.value.trim()
+  if(!name) return alert('Enter a username')
+  const id = uid()
+  startPresence(name, id)
+  usernameEl.disabled = true
+  loginBtn.style.display = 'none'
+  logoutBtn.style.display = ''
+  showInfo('Signed in as ' + name)
+})
+logoutBtn.addEventListener('click', ()=>{
+  stopPresence()
+  usernameEl.disabled = false
+  loginBtn.style.display = ''
+  logoutBtn.style.display = 'none'
+  showInfo('Signed out')
+})
+
+// rooms
+addRoomBtn.addEventListener('click', ()=>{
+  const r = newRoomEl.value.trim()
+  if(!r) return
+  if(!store.rooms.includes(r)){ store.rooms.push(r); store.messages[r]=[]; save(); broadcast({type:'room-add', room:r}); renderRooms() }
+  newRoomEl.value=''
+})
+
+function renderRooms(){
+  roomsWrap.innerHTML = ''
+  store.rooms.forEach(r=>{
+    const div = document.createElement('div'); div.className='room-btn'
+    div.innerHTML = `<div style="font-weight:700">${r}</div><div class="small">${(store.messages[r]||[]).length} msgs</div>`
+    div.onclick = ()=>{ currentRoom = r; renderMessages(r); highlightRoom(r) }
+    roomsWrap.appendChild(div)
+  })
+  highlightRoom(currentRoom)
+}
+
+function highlightRoom(r){
+  currentRoomTitle.innerHTML = `<strong>${r}</strong>`
+  roomMeta.textContent = (r.startsWith('pm:') ? 'Private conversation' : 'Public room')
+  // style rooms UI to show active
+  Array.from(roomsWrap.children).forEach(ch=>{
+    if(ch.firstChild && ch.firstChild.textContent === r) ch.style.boxShadow='0 6px 18px rgba(11,107,58,0.12)'; else ch.style.boxShadow=''
+  })
+}
+
+// messages rendering
+function renderMessages(room){
+  messagesEl.innerHTML = ''
+  // ensure messages array exists
+  if(!store.messages[room]) store.messages[room] = []
+  const arr = store.messages[room]
+  arr.forEach(m=>{
+    const div = document.createElement('div'); div.className='message ' + (store.currentUser && m.from === store.currentUser.id ? 'me' : 'them')
+    const sender = document.createElement('div'); sender.style.fontWeight='800'; sender.textContent = m.fromName || m.from
+    const text = document.createElement('div'); text.style.marginTop='6px'; text.textContent = m.text
+    const meta = document.createElement('div'); meta.className='meta'; meta.textContent = new Date(m.ts).toLocaleString() + (m.to ? ' • private' : '')
+    div.appendChild(sender); div.appendChild(text); div.appendChild(meta)
+    messagesEl.appendChild(div)
+  })
+  messagesEl.scrollTop = messagesEl.scrollHeight
+}
+
+sendBtn.addEventListener('click', sendMessage)
+msgInput.addEventListener('keypress', (e)=>{ if(e.key === 'Enter') sendMessage() })
+
+function sendMessage(){
+  const txt = msgInput.value.trim()
+  if(!txt) return
+  if(!store.currentUser) return alert('Sign in first')
+  const toUser = privateUserSelect.value || null
+  const msg = {
+    type:'message',
+    id: 'm_'+Math.random().toString(36).slice(2,9),
+    from: store.currentUser.id,
+    fromName: store.currentUser.name,
+    to: toUser || null,
+    text: txt,
+    ts: Date.now(),
+    room: toUser ? null : currentRoom
+  }
+  // local persist
+  if(msg.to){
+    const r = canonicalPMRoom(msg.from, msg.to)
+    if(!store.messages[r]) store.messages[r] = []
+    store.messages[r].push(msg)
+  } else {
+    if(!store.messages[currentRoom]) store.messages[currentRoom] = []
+    store.messages[currentRoom].push(msg)
+  }
+  save()
+  broadcast(msg) // send to other tabs
+  renderMessages(msg.to ? canonicalPMRoom(msg.from,msg.to) : currentRoom)
+  msgInput.value = ''
+}
+
+function canonicalPMRoom(a,b){
+  // ensure same order for PM room key
+  return 'pm:' + [a,b].sort().join(':')
+}
+
+function renderPresence(){
+  presenceList.innerHTML = ''
+  // prune stale ( >20s )
+  const now = Date.now()
+  Object.keys(store.users).forEach(uid=>{
+    if(now - store.users[uid].lastSeen > 30000){
+      delete store.users[uid]
+      save()
+    }
+  })
+  const ids = Object.keys(store.users)
+  if(ids.length === 0){ presenceList.innerHTML = '<div class="muted">No one online</div>'; return }
+  ids.forEach(id=>{
+    const row = document.createElement('div'); row.className='user-row'
+    row.innerHTML = `<div style="font-weight:700">${store.users[id].name}</div><div class="small">${(Date.now()-store.users[id].lastSeen<8000)?'online':'recent'}</div>`
+    presenceList.appendChild(row)
+  })
+  updatePrivateSelect()
+}
+
+function updatePrivateSelect(){
+  privateUserSelect.innerHTML = '<option value="">-- Private: select user --</option>'
+  Object.keys(store.users).forEach(id=>{
+    const opt = document.createElement('option'); opt.value = id; opt.textContent = store.users[id].name + (store.currentUser && id===store.currentUser.id ? ' (you)' : '')
+    privateUserSelect.appendChild(opt)
+  })
+}
+
+// clear chat for current room
+clearChatBtn.addEventListener('click', ()=>{
+  if(confirm('Clear chat history for current view?')) {
+    if(currentRoom.startsWith('pm:')) store.messages[currentRoom]=[]
+    else store.messages[currentRoom]=[]
+    save(); renderMessages(currentRoom)
+  }
+})
+
+// utility
+function showInfo(text){
+  // small in-page info using console + short alert
+  console.log(text)
+}
+
+// start: if there is a remembered user in store.currentUser, restore presence timer (note: id is not stable across reloads)
+if(store.currentUser){
+  // don't auto-start presence to avoid multiple entries; require user to press Sign In again
+  usernameEl.value = store.currentUser.name
+}
+
+</script>
+</body>
+</html>
