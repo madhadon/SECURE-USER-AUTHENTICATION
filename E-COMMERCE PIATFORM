@@ -1,0 +1,700 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Local Store — E-commerce Demo</title>
+<style>
+  :root{
+    --emerald:#006d3a; --gold:#b8860b; --bg:#071213; --card:#ffffff;
+    --muted:#6c757d; --glass: rgba(255,255,255,0.06);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family:Inter, "Segoe UI", Roboto, sans-serif;
+    background: linear-gradient(180deg,#071213 0%, #07231a 100%);
+    min-height:100vh; color:#041510; padding:28px;
+    display:flex; align-items:flex-start; justify-content:center;
+  }
+
+  /* App wrapper */
+  .store {
+    width:100%; max-width:1200px; background:linear-gradient(180deg, rgba(255,255,255,0.97), rgba(245,245,245,0.98));
+    border-radius:14px; overflow:hidden; display:grid; grid-template-columns: 320px 1fr 360px; gap:18px;
+    padding:20px; box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+  }
+
+  /* Left sidebar - filters & categories */
+  .sidebar { padding:14px; border-radius:10px; background:var(--card); box-shadow: 0 8px 20px rgba(2,8,6,0.04) }
+  .brand{display:flex;gap:12px;align-items:center;margin-bottom:12px}
+  .logo{width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,var(--emerald),var(--gold));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800}
+  h1{font-size:18px;margin:0;color:#042b1a}
+  .small{font-size:13px;color:var(--muted)}
+
+  .filter-group{margin-top:14px}
+  .filter-group h4{margin:0 0 8px 0;font-size:14px;color:#07311f}
+  select,input[type=range],input[type=search]{width:100%;padding:8px;border-radius:8px;border:1px solid #e9e9e9;font-size:14px}
+
+  .categories{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .chip{padding:8px 10px;border-radius:999px;background:#f4f7f4;border:1px solid #eef1ef;cursor:pointer;font-weight:700;color:#08321a}
+  .chip.active{background:linear-gradient(135deg,var(--emerald),var(--gold));color:#fff;box-shadow:0 8px 20px rgba(184,134,11,0.12)}
+
+  /* Middle - product grid */
+  .catalog { padding:14px; border-radius:10px; background:var(--card); box-shadow: 0 8px 20px rgba(2,8,6,0.04) }
+  .controls{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+  .search{flex:1; min-width:220px}
+  .btn{padding:8px 12px;border-radius:10px;border:none;cursor:pointer;font-weight:700}
+  .btn.ghost{background:#fff;border:1px solid #e9e9e9}
+  .btn.primary{background:linear-gradient(135deg,var(--emerald),var(--gold));color:#fff;box-shadow:0 10px 30px rgba(184,134,11,0.12)}
+
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .card{background:#fff;border-radius:10px;padding:12px;border:1px solid #eef2ee;display:flex;flex-direction:column;gap:8px}
+  .p-img{height:120px;border-radius:8px;background:linear-gradient(135deg,#e6f4ec,#fff);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--emerald);font-size:20px}
+  .p-title{font-weight:800;color:#063a20}
+  .p-desc{font-size:13px;color:var(--muted)}
+  .price{font-weight:900;color:#0b3b1f}
+
+  .rating{display:inline-block;padding:6px 8px;border-radius:8px;background:#f7fbf7;color:#0b3b1f;font-weight:700;font-size:13px}
+
+  /* Right - cart & orders */
+  .cart { padding:14px; border-radius:10px; background:var(--card); box-shadow: 0 8px 20px rgba(2,8,6,0.04); display:flex;flex-direction:column; gap:12px}
+  .cart h3{margin:0}
+  .cart-list{max-height:360px;overflow:auto;padding-right:6px}
+  .cart-item{display:flex;gap:10px;align-items:center;padding:8px;border-radius:8px;border:1px solid #f0f5f0;margin-bottom:8px}
+  .cart-item .mini{width:56px;height:56px;border-radius:8px;background:linear-gradient(135deg,#f7fff7,#eef6ec);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--emerald)}
+  .qty{display:flex;gap:6px;align-items:center}
+  .muted{color:var(--muted);font-size:13px}
+
+  .checkout{display:flex;flex-direction:column;gap:8px}
+  input,textarea{font-size:14px;padding:8px;border-radius:8px;border:1px solid #e8e8e8}
+  .order-history{max-height:240px;overflow:auto;padding-right:6px}
+
+  /* modal */
+  .modal-back{position:fixed;inset:0;background:rgba(2,6,4,0.45);display:flex;align-items:center;justify-content:center;z-index:80}
+  .modal{width:900px;max-width:96%;background:#fff;border-radius:12px;padding:16px;box-shadow:0 30px 80px rgba(2,6,4,0.6)}
+  .modal .grid-2{display:grid;grid-template-columns:1fr 320px;gap:12px}
+  .close{background:#fff;border:1px solid #eee;padding:6px 10px;border-radius:8px;cursor:pointer}
+
+  /* responsive */
+  @media (max-width:1100px){
+    .store{grid-template-columns: 1fr; padding:12px}
+    .grid{grid-template-columns:repeat(2,1fr)}
+    .modal .grid-2{grid-template-columns:1fr}
+  }
+  @media (max-width:700px){
+    .grid{grid-template-columns:1fr}
+  }
+
+  /* small helpers */
+  .flex{display:flex;gap:8px;align-items:center}
+  .right-align{margin-left:auto}
+</style>
+</head>
+<body>
+  <div class="store" id="store">
+    <!-- Left: Filters -->
+    <div class="sidebar">
+      <div class="brand">
+        <div class="logo">LS</div>
+        <div>
+          <h1>Local Store</h1>
+          <div class="small">Shop local. Fast delivery.</div>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <h4>Search</h4>
+        <input id="q" type="search" placeholder="Search products..." />
+      </div>
+
+      <div class="filter-group">
+        <h4>Category</h4>
+        <div class="categories" id="categories"></div>
+      </div>
+
+      <div class="filter-group">
+        <h4>Price Range</h4>
+        <input id="priceMax" type="range" min="0" max="500" step="5" value="500" />
+        <div class="small">Max Price: $<span id="priceMaxVal">500</span></div>
+      </div>
+
+      <div class="filter-group">
+        <h4>Sort</h4>
+        <select id="sort">
+          <option value="featured">Featured</option>
+          <option value="price-asc">Price — Low to High</option>
+          <option value="price-desc">Price — High to Low</option>
+          <option value="name">Name</option>
+          <option value="rating">Rating</option>
+        </select>
+      </div>
+
+      <div style="margin-top:14px">
+        <button class="btn primary" id="resetFilters">Reset Filters</button>
+      </div>
+    </div>
+
+    <!-- Middle: Catalog -->
+    <div class="catalog">
+      <div class="controls">
+        <div class="search">
+          <input id="searchBar" placeholder="Type & press Enter to search..." />
+        </div>
+        <div class="flex right-align">
+          <button class="btn ghost" id="btnImport">Import JSON</button>
+          <button class="btn ghost" id="btnExport">Export Data</button>
+          <button class="btn primary" id="btnAddProduct">Add Product</button>
+        </div>
+      </div>
+
+      <div id="productsGrid" class="grid"></div>
+    </div>
+
+    <!-- Right: Cart & Orders -->
+    <div class="cart">
+      <div style="display:flex;align-items:center;gap:12px">
+        <h3>Cart</h3>
+        <div class="muted" id="cartCount">(0 items)</div>
+        <div class="right-align" style="margin-left:auto">
+          <button class="btn ghost" id="viewOrders">Orders</button>
+        </div>
+      </div>
+
+      <div class="cart-list" id="cartList">
+        <div class="muted">Your cart is empty.</div>
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:center">
+        <div style="font-weight:900">Total: $<span id="cartTotal">0.00</span></div>
+        <div style="margin-left:auto">
+          <button class="btn primary" id="checkoutBtn">Checkout</button>
+        </div>
+      </div>
+
+      <hr />
+
+      <div>
+        <h4>Support</h4>
+        <div class="small">Have a question? Send a message.</div>
+        <textarea id="supportMsg" rows="3" placeholder="Describe your issue..."></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn" id="sendSupport">Send</button>
+        </div>
+      </div>
+
+      <hr />
+
+      <div>
+        <h4>Order History</h4>
+        <div class="order-history" id="orderHistory">
+          <div class="muted">No orders yet.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal root -->
+  <div id="modalRoot" style="display:none"></div>
+
+<script>
+/* =========================
+   E-commerce Demo (frontend)
+   - localStorage persistence
+   - products, cart, orders, reviews
+   ========================= */
+
+const LS_KEY = 'localstore_v1'
+let store = {
+  products: [],
+  cart: {},         // id -> qty
+  orders: [],
+  reviews: {},      // id -> [ {name, rating, text, date} ]
+  settings: {}
+}
+
+// ---------- Utilities ----------
+const $ = sel => document.querySelector(sel)
+const create = (t, cls) => { const e = document.createElement(t); if(cls) e.className = cls; return e }
+const uid = (n=6) => Math.random().toString(36).slice(2,2+n)
+const currency = n => Number(n).toFixed(2)
+
+// Save / Load
+function save(){
+  localStorage.setItem(LS_KEY, JSON.stringify(store))
+}
+function load(){
+  const raw = localStorage.getItem(LS_KEY)
+  if(raw) {
+    try { store = JSON.parse(raw) } catch(e){ console.warn('load error',e) }
+  } else {
+    seedDemo()
+    save()
+  }
+}
+
+// Demo seed
+function seedDemo(){
+  const demo = [
+    {id: 'p1', title:'Handcrafted Mug', category:'Home', price:18.50, desc:'Stoneware mug — 350ml. Perfect for morning coffee.', rating:4.6, stock:32, featured:true},
+    {id: 'p2', title:'Organic Soap Set', category:'Personal Care', price:12.00, desc:'Three-scent soap collection (lavender, citrus, mint).', rating:4.4, stock:50, featured:true},
+    {id: 'p3', title:'Cotton T-shirt', category:'Apparel', price:22.00, desc:'Comfort fit, breathable cotton. Multiple sizes available.', rating:4.2, stock:100, featured:false},
+    {id: 'p4', title:'Bluetooth Speaker', category:'Electronics', price:49.99, desc:'Portable speaker — 10 hours battery life.', rating:4.7, stock:18, featured:true},
+    {id: 'p5', title:'Notebook — A5', category:'Stationery', price:7.50, desc:'120 pages, recycled paper.', rating:4.0, stock:80, featured:false},
+    {id: 'p6', title:'Desk Plant (Succulent)', category:'Home', price:9.99, desc:'Low maintenance succulent. Care instructions included.', rating:4.5, stock:40, featured:false},
+    {id: 'p7', title:'Leather Wallet', category:'Accessories', price:39.00, desc:'Slim wallet with 6 card slots.', rating:4.3, stock:25, featured:false},
+    {id: 'p8', title:'Ceramic Vase', category:'Home', price:34.50, desc:'Hand-painted vase for flowers or decor.', rating:4.1, stock:15, featured:false},
+  ]
+  store.products = demo
+  store.cart = {}
+  store.orders = []
+  store.reviews = {
+    p1: [{name:'Sana', rating:5, text:'Lovely mug!', date: Date.now() - 86400000}],
+    p4: [{name:'Jai', rating:5, text:'Great sound for its size.', date: Date.now() - 3600*1000}],
+  }
+}
+
+// ---------- UI Rendering ----------
+load()
+const productsGrid = $('#productsGrid')
+const categoriesWrap = $('#categories')
+const qInput = $('#q')
+const priceMax = $('#priceMax')
+const priceMaxVal = $('#priceMaxVal')
+const sortSel = $('#sort')
+const cartList = $('#cartList')
+const cartTotalEl = $('#cartTotal')
+const cartCountEl = $('#cartCount')
+const orderHistoryEl = $('#orderHistory')
+const modalRoot = $('#modalRoot')
+
+function renderCategories(){
+  const cats = Array.from(new Set(store.products.map(p=>p.category))).sort()
+  categoriesWrap.innerHTML = ''
+  const all = create('div','chip active'); all.textContent = 'All'; all.dataset.cat = 'all'
+  categoriesWrap.appendChild(all)
+  all.addEventListener('click', ()=>{ document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active')); all.classList.add('active'); renderProducts() })
+  cats.forEach(cat=>{
+    const chip = create('div','chip'); chip.textContent = cat; chip.dataset.cat = cat
+    chip.addEventListener('click', ()=>{ document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active')); chip.classList.add('active'); renderProducts() })
+    categoriesWrap.appendChild(chip)
+  })
+}
+
+function getActiveCategory(){
+  const el = document.querySelector('.chip.active')
+  return el ? el.dataset.cat : 'all'
+}
+
+function renderProducts(){
+  const q = (qInput.value || '').trim().toLowerCase()
+  const maxPrice = Number(priceMax.value || 9999)
+  const cat = getActiveCategory()
+  let items = store.products.filter(p=>{
+    if(cat !== 'all' && p.category !== cat) return false
+    if(p.price > maxPrice) return false
+    if(q){
+      const hay = (p.title + ' ' + p.desc + ' ' + p.category).toLowerCase()
+      if(!hay.includes(q)) return false
+    }
+    return true
+  })
+
+  // sort
+  const sort = sortSel.value
+  if(sort === 'price-asc') items.sort((a,b)=>a.price-b.price)
+  else if(sort === 'price-desc') items.sort((a,b)=>b.price-a.price)
+  else if(sort === 'name') items.sort((a,b)=>a.title.localeCompare(b.title))
+  else if(sort === 'rating') items.sort((a,b)=> (b.rating||0)-(a.rating||0))
+  else items.sort((a,b)=> (b.featured?1:0)-(a.featured?1:0))
+
+  productsGrid.innerHTML = ''
+  if(items.length === 0){
+    productsGrid.innerHTML = `<div style="grid-column:1/-1;padding:28px;text-align:center" class="muted">No products found.</div>`
+    return
+  }
+
+  for(const p of items){
+    const c = create('div','card')
+    const img = create('div','p-img'); img.textContent = p.title.split(' ')[0].slice(0,2).toUpperCase()
+    c.appendChild(img)
+    const t = create('div'); t.innerHTML = `<div class="p-title">${p.title}</div><div class="p-desc">${p.desc}</div>`
+    c.appendChild(t)
+    const bottom = create('div','flex'); bottom.style.marginTop='auto'
+    const price = create('div'); price.className='price'; price.textContent = '$' + currency(p.price)
+    bottom.appendChild(price)
+    const rating = create('div','rating'); rating.textContent = (p.rating||0).toFixed(1)
+    bottom.appendChild(rating)
+    const right = create('div'); right.style.marginLeft='auto'
+    const btnView = create('button','btn ghost'); btnView.textContent = 'View'
+    btnView.onclick = ()=>openProduct(p.id)
+    const btnAdd = create('button','btn primary'); btnAdd.textContent = 'Add'
+    btnAdd.onclick = ()=>addToCart(p.id,1)
+    right.appendChild(btnView); right.appendChild(btnAdd)
+    bottom.appendChild(right)
+    c.appendChild(bottom)
+    productsGrid.appendChild(c)
+  }
+}
+
+/* Cart management */
+function addToCart(id, qty=1){
+  const p = store.products.find(x=>x.id===id)
+  if(!p) return alert('Product not found')
+  if(!store.cart[id]) store.cart[id] = 0
+  store.cart[id] += qty
+  if(store.cart[id] < 1) delete store.cart[id]
+  save(); renderCart()
+  showToast('Added to cart')
+}
+function removeFromCart(id){
+  delete store.cart[id]; save(); renderCart()
+}
+function updateQty(id, qty){
+  if(qty <= 0) { removeFromCart(id); return }
+  store.cart[id] = qty; save(); renderCart()
+}
+function cartItems(){
+  return Object.keys(store.cart).map(id=>{
+    const p = store.products.find(x=>x.id===id)
+    return p ? {product:p, qty:store.cart[id]} : null
+  }).filter(Boolean)
+}
+function cartTotal(){
+  return cartItems().reduce((s,it)=> s + (it.product.price * it.qty), 0)
+}
+function renderCart(){
+  const items = cartItems()
+  cartList.innerHTML = ''
+  if(items.length === 0){
+    cartList.innerHTML = '<div class="muted">Your cart is empty.</div>'
+  } else {
+    for(const it of items){
+      const el = create('div','cart-item')
+      el.innerHTML = `<div class="mini">${it.product.title.split(' ')[0].slice(0,2).toUpperCase()}</div>
+        <div style="flex:1">
+          <div style="font-weight:800">${it.product.title}</div>
+          <div class="muted">$${currency(it.product.price)} • ${it.product.category}</div>
+        </div>`
+      const right = create('div'); right.style.textAlign='right'
+      const qtyWrap = create('div','qty')
+      const btnMinus = create('button','btn'); btnMinus.textContent='−'
+      btnMinus.onclick = ()=> updateQty(it.product.id, it.qty - 1)
+      const qty = create('div'); qty.textContent = it.qty; qty.style.minWidth='22px'; qty.style.textAlign='center'
+      const btnPlus = create('button','btn'); btnPlus.textContent='+'
+      btnPlus.onclick = ()=> updateQty(it.product.id, it.qty + 1)
+      qtyWrap.appendChild(btnMinus); qtyWrap.appendChild(qty); qtyWrap.appendChild(btnPlus)
+      right.appendChild(qtyWrap)
+      const remove = create('div'); remove.style.marginTop='8px'
+      const rbtn = create('button','btn'); rbtn.textContent='Remove'; rbtn.onclick = ()=> removeFromCart(it.product.id)
+      remove.appendChild(rbtn); right.appendChild(remove)
+      el.appendChild(right)
+      cartList.appendChild(el)
+    }
+  }
+  cartTotalEl.textContent = currency(cartTotal())
+  const count = Object.values(store.cart).reduce((a,b)=>a+(b||0),0)
+  cartCountEl.textContent = `(${count} items)`
+}
+
+/* Product modal & reviews */
+function openProduct(id){
+  const p = store.products.find(x=>x.id===id)
+  if(!p) return
+  const reviews = store.reviews[id] || []
+  modalRoot.innerHTML = ''
+  const back = create('div'); back.className = 'modal-back'
+  const modal = create('div'); modal.className = 'modal'
+  modal.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <h3 style="margin:0">${p.title} — $${currency(p.price)}</h3>
+      <div><button class="close" id="closeModal">Close</button></div>
+    </div>
+    <div class="grid-2">
+      <div>
+        <div style="height:240px;border-radius:10px;background:linear-gradient(135deg,#f7fff7,#eef6ec);display:flex;align-items:center;justify-content:center;font-weight:900;color:var(--emerald);font-size:28px">${p.title.split(' ')[0].slice(0,2).toUpperCase()}</div>
+        <div style="margin-top:12px">${p.desc}</div>
+        <div style="margin-top:8px" class="muted">Category: ${p.category} • Stock: ${p.stock}</div>
+        <div style="margin-top:10px"><button class="btn primary" id="modalAdd">Add to cart</button></div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:800">Reviews (${reviews.length})</div>
+          <div class="rating">${(p.rating||0).toFixed(1)}</div>
+        </div>
+        <div style="margin-top:10px;max-height:220px;overflow:auto;padding-right:6px" id="reviewsList">
+          ${reviews.length ? reviews.map(r=>`<div style="padding:8px;border-bottom:1px solid #f2f7f2"><strong>${escapeHtml(r.name)}</strong> <span class="muted">• ${new Date(r.date).toLocaleDateString()}</span><div style="font-weight:700">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</div><div>${escapeHtml(r.text)}</div></div>`).join('') : '<div class="muted">No reviews yet. Be the first!</div>'}
+        </div>
+
+        <div style="margin-top:10px">
+          <div style="font-weight:800;margin-bottom:6px">Leave a review</div>
+          <input id="revName" placeholder="Your name" style="width:100%;margin-bottom:6px;padding:7px;border-radius:6px;border:1px solid #eee" />
+          <select id="revRating" style="width:100%;padding:7px;border-radius:6px;border:1px solid #eee;margin-bottom:6px">
+            <option value="5">5 — Excellent</option>
+            <option value="4">4 — Very Good</option>
+            <option value="3">3 — Good</option>
+            <option value="2">2 — Fair</option>
+            <option value="1">1 — Poor</option>
+          </select>
+          <textarea id="revText" rows="3" style="width:100%;padding:7px;border-radius:6px;border:1px solid #eee"></textarea>
+          <div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end">
+            <button class="btn" id="revCancel">Cancel</button>
+            <button class="btn primary" id="revSubmit">Submit Review</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+  back.appendChild(modal); modalRoot.appendChild(back); modalRoot.style.display='block'
+  $('#closeModal').onclick = () => closeModal()
+  $('#revCancel').onclick = () => closeModal()
+  $('#modalAdd').onclick = ()=>{ addToCart(p.id, 1); closeModal() }
+  $('#revSubmit').onclick = ()=>{
+    const name = $('#revName').value.trim() || 'Anonymous'
+    const rating = Math.max(1, Math.min(5, Number($('#revRating').value || 5)))
+    const text = $('#revText').value.trim() || ''
+    const r = {name, rating, text, date: Date.now()}
+    store.reviews[id] = store.reviews[id] || []
+    store.reviews[id].unshift(r)
+    // update product average rating (simple)
+    const avg = (store.reviews[id].reduce((s,rr)=>s+rr.rating,0) / store.reviews[id].length)
+    const prod = store.products.find(x=>x.id===id)
+    if(prod) prod.rating = Number(avg.toFixed(1))
+    save()
+    openProduct(id) // re-open fresh with updated reviews
+  }
+}
+function closeModal(){ modalRoot.innerHTML=''; modalRoot.style.display='none' }
+
+function escapeHtml(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])) }
+
+/* Checkout & Orders */
+function checkout(){
+  if(cartItems().length === 0) return alert('Cart is empty')
+  // show checkout modal
+  modalRoot.innerHTML = ''
+  const back = create('div'); back.className='modal-back'
+  const modal = create('div'); modal.className='modal'
+  modal.innerHTML = `
+    <h3>Checkout</h3>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <div style="flex:1;min-width:260px">
+        <label>Full name</label><input id="coName" placeholder="Your full name" />
+        <label style="margin-top:8px">Email</label><input id="coEmail" placeholder="you@example.com" />
+        <label style="margin-top:8px">Address</label><input id="coAddr" placeholder="Shipping address" />
+        <label style="margin-top:8px">Phone</label><input id="coPhone" placeholder="+1-555-..." />
+      </div>
+      <div style="width:320px">
+        <div style="font-weight:800">Order summary</div>
+        <div id="coSummary" style="margin-top:8px"></div>
+        <div style="margin-top:12px;color:var(--muted)">Payment is simulated in this demo.</div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+      <button class="btn" id="coCancel">Cancel</button>
+      <button class="btn primary" id="coPlace">Place Order</button>
+    </div>
+  `
+  back.appendChild(modal); modalRoot.appendChild(back); modalRoot.style.display='block'
+  $('#coCancel').onclick = () => closeModal()
+  // fill summary
+  const summary = cartItems().map(it => `<div style="display:flex;justify-content:space-between;padding:6px 0"><div>${it.product.title} × ${it.qty}</div><div>$${currency(it.product.price*it.qty)}</div></div>`).join('') + `<hr><div style="display:flex;justify-content:space-between"><strong>Total</strong><strong>$${currency(cartTotal())}</strong></div>`
+  $('#coSummary').innerHTML = summary
+
+  $('#coPlace').onclick = ()=>{
+    const name = $('#coName').value.trim()
+    const email = $('#coEmail').value.trim()
+    const addr = $('#coAddr').value.trim()
+    const phone = $('#coPhone').value.trim()
+    if(!name || !email || !addr){ alert('Please fill name, email and address'); return }
+    // create order
+    const id = 'o-'+uid(7)
+    const order = {
+      id, createdAt: Date.now(), status: 'Processing',
+      name, email, addr, phone,
+      items: cartItems().map(it=>({id: it.product.id, title: it.product.title, price: it.product.price, qty: it.qty})),
+      total: cartTotal()
+    }
+    store.orders.unshift(order)
+    // clear cart
+    store.cart = {}
+    save()
+    renderCart(); renderOrders()
+    closeModal()
+    showToast('Order placed — thank you!')
+    // simulate status changes
+    setTimeout(()=>updateOrderStatus(id,'Shipped'), 3000)
+    setTimeout(()=>updateOrderStatus(id,'Out for delivery'), 7000)
+    setTimeout(()=>updateOrderStatus(id,'Delivered'), 12000)
+  }
+}
+
+/* Orders */
+function renderOrders(){
+  orderHistoryEl.innerHTML = ''
+  if(store.orders.length === 0){
+    orderHistoryEl.innerHTML = '<div class="muted">No orders yet.</div>'
+    return
+  }
+  for(const o of store.orders){
+    const el = create('div'); el.style.padding='8px'; el.style.borderBottom='1px solid #f2f7f2'
+    el.innerHTML = `<div style="display:flex;justify-content:space-between"><div style="font-weight:800">${o.id}</div><div class="muted">${new Date(o.createdAt).toLocaleString()}</div></div>
+      <div class="small" style="margin-top:4px">${o.items.length} items • $${currency(o.total)}</div>
+      <div style="margin-top:6px"><strong>Status:</strong> ${o.status}</div>
+      <div style="display:flex;justify-content:flex-end;margin-top:6px"><button class="btn" data-order="${o.id}">View</button></div>`
+    orderHistoryEl.appendChild(el)
+  }
+  // view buttons
+  orderHistoryEl.querySelectorAll('button[data-order]').forEach(b=>{
+    b.addEventListener('click', (ev)=>{
+      const id = b.dataset.order
+      openOrder(id)
+    })
+  })
+}
+function openOrder(id){
+  const o = store.orders.find(x=>x.id===id)
+  if(!o) return
+  modalRoot.innerHTML = ''
+  const back = create('div'); back.className='modal-back'
+  const modal = create('div'); modal.className='modal'
+  modal.innerHTML = `<h3>Order ${o.id}</h3>
+    <div><strong>Status:</strong> ${o.status}</div>
+    <div style="margin-top:8px"><strong>Name:</strong> ${escapeHtml(o.name)}</div>
+    <div style="margin-top:6px"><strong>Address:</strong> ${escapeHtml(o.addr)}</div>
+    <div style="margin-top:10px"><strong>Items:</strong>
+      <ul>${o.items.map(it=>`<li>${escapeHtml(it.title)} × ${it.qty} — $${currency(it.price*it.qty)}</li>`).join('')}</ul>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
+      <button class="btn" id="ordClose">Close</button>
+    </div>`
+  back.appendChild(modal); modalRoot.appendChild(back); modalRoot.style.display='block'
+  $('#ordClose').onclick = ()=> closeModal()
+}
+// update order status
+function updateOrderStatus(id, status){
+  const o = store.orders.find(x=>x.id===id)
+  if(!o) return
+  o.status = status; save(); renderOrders()
+}
+
+/* Support message */
+$('#sendSupport').addEventListener('click', ()=>{
+  const msg = $('#supportMsg').value.trim()
+  if(!msg) return alert('Write a message first')
+  // store as a support ticket (here we'll just show toast and clear)
+  $('#supportMsg').value = ''
+  showToast('Support message sent — we will contact you via email.')
+})
+
+/* Add product (simple) */
+$('#btnAddProduct').addEventListener('click', ()=>{
+  modalRoot.innerHTML = ''
+  const back = create('div'); back.className='modal-back'
+  const modal = create('div'); modal.className='modal'
+  modal.innerHTML = `<h3>Add Product</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <input id="npTitle" placeholder="Title" />
+      <input id="npCategory" placeholder="Category" />
+      <input id="npPrice" placeholder="Price" type="number" />
+      <input id="npStock" placeholder="Stock" type="number" />
+      <textarea id="npDesc" rows="3" placeholder="Short description"></textarea>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
+      <button class="btn" id="npCancel">Cancel</button>
+      <button class="btn primary" id="npSave">Save</button>
+    </div>`
+  back.appendChild(modal); modalRoot.appendChild(back); modalRoot.style.display='block'
+  $('#npCancel').onclick = ()=> closeModal()
+  $('#npSave').onclick = ()=>{
+    const title = $('#npTitle').value.trim()
+    const category = $('#npCategory').value.trim() || 'General'
+    const price = Number($('#npPrice').value || 0)
+    const stock = Number($('#npStock').value || 0)
+    const desc = $('#npDesc').value.trim()
+    if(!title || price <= 0){ alert('Please enter valid title and price'); return }
+    const id = 'p'+uid(6)
+    store.products.unshift({id,title,category,price,desc,stock,rating:4.0})
+    save()
+    renderCategories(); renderProducts(); closeModal(); showToast('Product added')
+  }
+})
+
+/* Import / Export */
+$('#btnExport').addEventListener('click', ()=>{
+  const blob = new Blob([JSON.stringify(store, null, 2)], {type:'application/json'})
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a'); a.href = url; a.download = 'localstore-data.json'; a.click()
+  URL.revokeObjectURL(url)
+})
+$('#btnImport').addEventListener('click', ()=>{
+  const input = create('input'); input.type='file'; input.accept='application/json'
+  input.onchange = (e)=>{
+    const f = e.target.files[0]; if(!f) return
+    const reader = new FileReader()
+    reader.onload = (ev)=>{
+      try {
+        const data = JSON.parse(ev.target.result)
+        // basic validation
+        if(Array.isArray(data.products)){ store.products = data.products }
+        if(data.cart) store.cart = data.cart
+        if(Array.isArray(data.orders)) store.orders = data.orders
+        if(data.reviews) store.reviews = data.reviews
+        save(); renderCategories(); renderProducts(); renderCart(); renderOrders(); showToast('Data imported')
+      } catch(err){ alert('Import failed: ' + err.message) }
+    }
+    reader.readAsText(f)
+  }
+  input.click()
+})
+
+/* Simple toast */
+function showToast(txt){
+  const t = create('div'); t.textContent = txt; t.style.position='fixed'; t.style.right='20px'; t.style.bottom='20px';
+  t.style.background='linear-gradient(135deg,var(--emerald),var(--gold))'; t.style.color='#fff'; t.style.padding='10px 14px';
+  t.style.borderRadius='10px'; t.style.boxShadow='0 10px 30px rgba(0,0,0,0.4)'; t.style.zIndex=2000; document.body.appendChild(t)
+  setTimeout(()=> t.style.opacity=0,2200)
+  setTimeout(()=> t.remove(),2800)
+}
+
+/* Search & Filters events */
+qInput.addEventListener('input', ()=> renderProducts())
+$('#searchBar').addEventListener('keypress', (e)=>{ if(e.key === 'Enter') { qInput.value = $('#searchBar').value; renderProducts() } })
+priceMax.addEventListener('input', ()=> { priceMaxVal.textContent = priceMax.value; renderProducts() })
+sortSel.addEventListener('change', ()=> renderProducts())
+$('#resetFilters').addEventListener('click', ()=> {
+  qInput.value=''; $('#searchBar').value=''; priceMax.value=500; priceMaxVal.textContent=500; sortSel.value='featured';
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active')); document.querySelector('.chip').classList.add('active')
+  renderProducts()
+})
+
+/* Product actions from grid */
+function attachProductActions(){ /* no-op — grid builds buttons with handlers inline */ }
+
+/* Initialization */
+renderCategories()
+renderProducts()
+renderCart()
+renderOrders()
+
+/* View Orders (full list) */
+$('#viewOrders').addEventListener('click', ()=>{
+  modalRoot.innerHTML = ''
+  const back = create('div'); back.className='modal-back'
+  const modal = create('div'); modal.className='modal'
+  modal.innerHTML = `<h3>Orders</h3><div style="max-height:320px;overflow:auto;padding-right:6px">${store.orders.length ? store.orders.map(o=>`<div style="padding:8px;border-bottom:1px solid #f2f7f2"><div style="display:flex;justify-content:space-between"><strong>${o.id}</strong><span class="muted">${new Date(o.createdAt).toLocaleString()}</span></div><div style="margin-top:6px">${o.items.length} items • $${currency(o.total)}</div><div style="margin-top:6px"><strong>Status:</strong> ${o.status}</div><div style="display:flex;justify-content:flex-end;margin-top:6px"><button class="btn" data-o="${o.id}">View</button></div></div>`).join('') : '<div class="muted">No orders yet.</div>'}</div><div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="btn" id="closeOrders">Close</button></div>`
+  back.appendChild(modal); modalRoot.appendChild(back); modalRoot.style.display='block'
+  $('#closeOrders').onclick = ()=> closeModal()
+  modal.querySelectorAll('button[data-o]').forEach(b=> b.addEventListener('click', ()=> { openOrder(b.dataset.o); closeModal() }))
+})
+
+/* Checkout button */
+$('#checkoutBtn').addEventListener('click', ()=> checkout())
+
+/* initial price range cap */
+priceMax.max = 500; priceMax.value = 500; priceMaxVal.textContent = priceMax.value
+
+// expose for debugging
+window.appStore = store
+</script>
+</body>
+</html>
