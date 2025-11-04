@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Secure Authentication System</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+      }
+
+      .container {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        padding: 40px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 800px;
+        transition: all 0.3s ease;
+      }
+
+      .auth-tabs {
+        display: flex;
+        margin-bottom: 30px;
+        background: #f8f9fa;
+        border-radius: 50px;
+        padding: 5px;
+      }
+
+      .tab-button {
+        flex: 1;
+        padding: 15px 20px;
+        border: none;
+        background: transparent;
+        border-radius: 50px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        color: #6c757d;
+      }
+
+      .tab-button.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+      }
+
+      .form-group {
+        margin-bottom: 25px;
+      }
+
+      .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #333;
+      }
+
+      .form-group input,
+      .form-group select {
+        width: 100%;
+        padding: 15px 20px;
+        border: 2px solid #e9ecef;
+        border-radius: 10px;
+        font-size: 16px;
+        transition: all 0.3s ease;
+        background: white;
+      }
+
+      .form-group input:focus,
+      .form-group select:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+
+      .password-strength {
+        margin-top: 8px;
+        height: 4px;
+        background: #e9ecef;
+        border-radius: 2px;
+        overflow: hidden;
+      }
+
+      .strength-bar {
+        height: 100%;
+        transition: all 0.3s ease;
+        border-radius: 2px;
+      }
+
+      .submit-btn {
+        width: 100%;
+        padding: 15px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 18px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-bottom: 20px;
+      }
+
+      .submit-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+      }
+
+      .submit-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .message {
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        font-weight: 500;
+        text-align: center;
+      }
+
+      .error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+
+      .success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+
+      .dashboard {
+        display: none;
+        text-align: center;
+      }
+
+      .dashboard.active {
+        display: block;
+      }
+
+      .dashboard h2 {
+        color: #333;
+        margin-bottom: 20px;
+      }
+
+      .user-info {
+        background: #f8f9fa;
+        padding: 25px;
+        border-radius: 15px;
+        margin-bottom: 25px;
+      }
+
+      .role-badge {
+        display: inline-block;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 600;
+        margin-left: 10px;
+      }
+
+      .role-admin {
+        background: #dc3545;
+        color: white;
+      }
+
+      .role-user {
+        background: #28a745;
+        color: white;
+      }
+
+      .role-guest {
+        background: #6c757d;
+        color: white;
+      }
+
+      .protected-content {
+        background: linear-gradient(135deg, #667eea20 0%, #764ba220 100%);
+        padding: 25px;
+        border-radius: 15px;
+        margin: 20px 0;
+        border-left: 4px solid #667eea;
+      }
+
+      .logout-btn {
+        background: #dc3545;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+      }
+
+      .logout-btn:hover {
+        background: #c82333;
+        transform: translateY(-1px);
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      @media (max-width: 600px) {
+        .container {
+          padding: 30px 20px;
+          margin: 10px;
+        }
+
+        .tab-button {
+          padding: 12px 16px;
+          font-size: 14px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <!-- Authentication Forms -->
+      <div id="authSection">
+        <div class="auth-tabs">
+          <button class="tab-button active" onclick="switchTab('login')">
+            Login
+          </button>
+          <button class="tab-button" onclick="switchTab('register')">
+            Register
+          </button>
+        </div>
+
+        <div id="message" class="hidden"></div>
+
+        <!-- Login Form -->
+        <form id="loginForm">
+          <div class="form-group">
+            <label for="loginEmail">Email Address</label>
+            <input type="email" id="loginEmail" name="email" required />
+          </div>
+          <div class="form-group">
+            <label for="loginPassword">Password</label>
+            <input
+              type="password"
+              id="loginPassword"
+              name="password"
+              required
+            />
+          </div>
+          <button type="submit" class="submit-btn">Sign In</button>
+        </form>
+
+        <!-- Registration Form -->
+        <form id="registerForm" class="hidden">
+          <div class="form-group">
+            <label for="registerName">Full Name</label>
+            <input type="text" id="registerName" name="name" required />
+          </div>
+          <div class="form-group">
+            <label for="registerEmail">Email Address</label>
+            <input type="email" id="registerEmail" name="email" required />
+          </div>
+          <div class="form-group">
+            <label for="registerPassword">Password</label>
+            <input
+              type="password"
+              id="registerPassword"
+              name="password"
+              required
+            />
+            <div class="password-strength">
+              <div class="strength-bar" id="strengthBar"></div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="confirmPassword">Confirm Password</label>
+            <input
+              type="password"
+              id="confirmPassword"
+              name="confirmPassword"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="userRole">Role</label>
+            <select id="userRole" name="role">
+              <option value="user">User</option>
+              <option value="admin">Admin</option>
+              <option value="guest">Guest</option>
+            </select>
+          </div>
+          <button type="submit" class="submit-btn">Create Account</button>
+        </form>
+      </div>
+
+      <!-- Dashboard -->
+      <div id="dashboard" class="dashboard">
+        <h2>Welcome to Your Dashboard</h2>
+        <div class="user-info">
+          <h3 id="userName"></h3>
+          <p><strong>Email:</strong> <span id="userEmail"></span></p>
+          <p>
+            <strong>Role:</strong>
+            <span id="userRole" class="role-badge"></span>
+          </p>
+          <p>
+            <strong>Session Started:</strong> <span id="sessionTime"></span>
+          </p>
+        </div>
+
+        <div class="protected-content">
+          <h4>🔒 Protected Content</h4>
+          <p>This content is only visible to authenticated users!</p>
+          <div id="roleBasedContent"></div>
+        </div>
+
+        <button class="logout-btn" onclick="logout()">Logout</button>
+      </div>
+    </div>
+
+    <script>
+      // Simulated user database (in real app, this would be server-side)
+      let users = [];
+      let currentUser = null;
+      let sessionTimeout = null;
+
+      // Initialize demo users
+      function initializeDemoUsers() {
+        users = [
+          {
+            id: 1,
+            name: "Admin User",
+            email: "admin@demo.com",
+            password: hashPassword("admin123"),
+            role: "admin",
+            createdAt: new Date(),
+          },
+          {
+            id: 2,
+            name: "Regular User",
+            email: "user@demo.com",
+            password: hashPassword("user123"),
+            role: "user",
+            createdAt: new Date(),
+          },
+        ];
+      }
+
+      // Simple password hashing (in production, use bcrypt or similar)
+      function hashPassword(password) {
+        let hash = 0;
+        for (let i = 0; i < password.length; i++) {
+          const char = password.charCodeAt(i);
+          hash = (hash << 5) - hash + char;
+          hash = hash & hash; // Convert to 32bit integer
+        }
+        return Math.abs(hash).toString(36);
+      }
+
+      // Password strength checker
+      function checkPasswordStrength(password) {
+        let score = 0;
+        if (password.length >= 8) score++;
+        if (/[a-z]/.test(password)) score++;
+        if (/[A-Z]/.test(password)) score++;
+        if (/[0-9]/.test(password)) score++;
+        if (/[^A-Za-z0-9]/.test(password)) score++;
+
+        const strengthBar = document.getElementById("strengthBar");
+        const colors = ["#dc3545", "#fd7e14", "#ffc107", "#20c997", "#28a745"];
+        const widths = ["20%", "40%", "60%", "80%", "100%"];
+
+        if (password.length > 0) {
+          strengthBar.style.width = widths[score - 1] || "20%";
+          strengthBar.style.backgroundColor = colors[score - 1] || "#dc3545";
+        } else {
+          strengthBar.style.width = "0%";
+        }
+
+        return score;
+      }
+
+      // Tab switching
+      function switchTab(tab) {
+        const loginForm = document.getElementById("loginForm");
+        const registerForm = document.getElementById("registerForm");
+        const tabButtons = document.querySelectorAll(".tab-button");
+
+        tabButtons.forEach((btn) => btn.classList.remove("active"));
+
+        if (tab === "login") {
+          loginForm.classList.remove("hidden");
+          registerForm.classList.add("hidden");
+          tabButtons[0].classList.add("active");
+        } else {
+          loginForm.classList.add("hidden");
+          registerForm.classList.remove("hidden");
+          tabButtons[1].classList.add("active");
+        }
+
+        clearMessage();
+      }
+
+      // Show message
+      function showMessage(text, type) {
+        const messageDiv = document.getElementById("message");
+        messageDiv.textContent = text;
+        messageDiv.className = `message ${type}`;
+        messageDiv.classList.remove("hidden");
+      }
+
+      // Clear message
+      function clearMessage() {
+        const messageDiv = document.getElementById("message");
+        messageDiv.classList.add("hidden");
+      }
+
+      // Login function
+      function login(email, password) {
+        const user = users.find((u) => u.email === email);
+
+        if (!user) {
+          showMessage(
+            "User not found. Please check your email address.",
+            "error"
+          );
+          return false;
+        }
+
+        if (user.password !== hashPassword(password)) {
+          showMessage("Invalid password. Please try again.", "error");
+          return false;
+        }
+
+        // Successful login
+        currentUser = {
+          ...user,
+          sessionStart: new Date(),
+        };
+
+        showDashboard();
+        startSessionTimeout();
+        showMessage("Login successful!", "success");
+
+        return true;
+      }
+
+      // Register function
+      function register(name, email, password, confirmPassword, role) {
+        // Validation
+        if (password !== confirmPassword) {
+          showMessage("Passwords do not match.", "error");
+          return false;
+        }
+
+        if (checkPasswordStrength(password) < 3) {
+          showMessage(
+            "Password is too weak. Use at least 8 characters with mixed case, numbers, and symbols.",
+            "error"
+          );
+          return false;
+        }
+
+        if (users.find((u) => u.email === email)) {
+          showMessage(
+            "Email already registered. Please use a different email.",
+            "error"
+          );
+          return false;
+        }
+
+        // Create new user
+        const newUser = {
+          id: users.length + 1,
+          name: name,
+          email: email,
+          password: hashPassword(password),
+          role: role,
+          createdAt: new Date(),
+        };
+
+        users.push(newUser);
+        showMessage(
+          "Account created successfully! You can now login.",
+          "success"
+        );
+
+        // Switch to login tab
+        setTimeout(() => {
+          switchTab("login");
+          document.getElementById("loginEmail").value = email;
+        }, 2000);
+
+        return true;
+      }
+
+      // Show dashboard
+      function showDashboard() {
+        document.getElementById("authSection").style.display = "none";
+        document.getElementById("dashboard").classList.add("active");
+
+        // Populate user info
+        document.getElementById("userName").textContent = currentUser.name;
+        document.getElementById("userEmail").textContent = currentUser.email;
+
+        const roleElement = document.getElementById("userRole");
+        roleElement.textContent = currentUser.role.toUpperCase();
+        roleElement.className = `role-badge role-${currentUser.role}`;
+
+        document.getElementById("sessionTime").textContent =
+          currentUser.sessionStart.toLocaleString();
+
+        // Role-based content
+        updateRoleBasedContent();
+      }
+
+      // Update role-based content
+      function updateRoleBasedContent() {
+        const contentDiv = document.getElementById("roleBasedContent");
+
+        switch (currentUser.role) {
+          case "admin":
+            contentDiv.innerHTML = `
+                        <div style="margin-top: 15px; padding: 15px; background: rgba(220, 53, 69, 0.1); border-radius: 8px;">
+                            <h5>🔧 Admin Panel</h5>
+                            <p>You have administrative privileges and can access all system features.</p>
+                            <p><strong>Total Users:</strong> ${users.length}</p>
+                        </div>
+                    `;
+            break;
+          case "user":
+            contentDiv.innerHTML = `
+                        <div style="margin-top: 15px; padding: 15px; background: rgba(40, 167, 69, 0.1); border-radius: 8px;">
+                            <h5>👤 User Dashboard</h5>
+                            <p>Welcome! You have standard user access to the application.</p>
+                        </div>
+                    `;
+            break;
+          case "guest":
+            contentDiv.innerHTML = `
+                        <div style="margin-top: 15px; padding: 15px; background: rgba(108, 117, 125, 0.1); border-radius: 8px;">
+                            <h5>👁️ Guest Access</h5>
+                            <p>You have limited guest access. Consider upgrading your account for more features.</p>
+                        </div>
+                    `;
+            break;
+        }
+      }
+
+      // Session management
+      function startSessionTimeout() {
+        // Clear existing timeout
+        if (sessionTimeout) {
+          clearTimeout(sessionTimeout);
+        }
+
+        // Set 30-minute timeout (for demo, using 30 seconds)
+        sessionTimeout = setTimeout(() => {
+          showMessage("Session expired. Please login again.", "error");
+          logout();
+        }, 30000);
+      }
+
+      // Logout function
+      function logout() {
+        currentUser = null;
+        if (sessionTimeout) {
+          clearTimeout(sessionTimeout);
+        }
+
+        document.getElementById("authSection").style.display = "block";
+        document.getElementById("dashboard").classList.remove("active");
+
+        // Clear forms
+        document.getElementById("loginForm").reset();
+        document.getElementById("registerForm").reset();
+        document.getElementById("strengthBar").style.width = "0%";
+
+        clearMessage();
+        switchTab("login");
+      }
+
+      // Event listeners
+      document
+        .getElementById("loginForm")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+          const email = document.getElementById("loginEmail").value;
+          const password = document.getElementById("loginPassword").value;
+          login(email, password);
+        });
+
+      document
+        .getElementById("registerForm")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+          const name = document.getElementById("registerName").value;
+          const email = document.getElementById("registerEmail").value;
+          const password = document.getElementById("registerPassword").value;
+          const confirmPassword =
+            document.getElementById("confirmPassword").value;
+          const role = document.getElementById("userRole").value;
+
+          register(name, email, password, confirmPassword, role);
+        });
+
+      // Password strength checker
+      document
+        .getElementById("registerPassword")
+        .addEventListener("input", function (e) {
+          checkPasswordStrength(e.target.value);
+        });
+
+      // Initialize the application
+      initializeDemoUsers();
+
+      // Demo credentials info
+      setTimeout(() => {
+        if (!currentUser) {
+          showMessage(
+            "Demo credentials - Email: admin@demo.com, Password: admin123 or user@demo.com, Password: user123",
+            "success"
+          );
+        }
+      }, 1000);
+    </script>
+  </body>
+</html>
