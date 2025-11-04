@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Task-05 — Social Media (Frontend Demo)</title>
+<style>
+  :root{--accent:#0b6b3a;--gold:#b8860b;--muted:#6c757d}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,Segoe UI,Arial;background:linear-gradient(180deg,#071b2a,#072a3a);min-height:100vh;color:#061c16;display:flex;align-items:center;justify-content:center;padding:18px}
+  .app{width:100%;max-width:1100px;background:linear-gradient(180deg,#fff,#fbfbfb);border-radius:12px;overflow:hidden;display:grid;grid-template-columns:280px 1fr 320px;gap:12px;padding:14px;box-shadow:0 30px 80px rgba(0,0,0,0.45)}
+  .left,.right{background:#fff;padding:12px;border-radius:10px}
+  .center{background:#fff;padding:12px;border-radius:10px}
+  h2{margin:0 0 8px 0;color:#05331f}
+  .small{font-size:13px;color:var(--muted)}
+  input,textarea,select{width:100%;padding:8px;border-radius:8px;border:1px solid #e9e9e9;margin-top:6px}
+  button{padding:8px 10px;border-radius:8px;border:none;background:linear-gradient(135deg,var(--accent),var(--gold));color:#fff;font-weight:700;cursor:pointer}
+  .profile-card{text-align:center}
+  .avatar{width:96px;height:96px;border-radius:999px;background:linear-gradient(135deg,#eaf6ed,#f7fff7);display:flex;align-items:center;justify-content:center;font-weight:900;color:var(--accent);font-size:28px;margin:8px auto}
+  .post-form{display:flex;flex-direction:column;gap:8px}
+  .feed{display:flex;flex-direction:column;gap:12px;margin-top:12px}
+  .post{background:#fff;border-radius:10px;padding:12px;border:1px solid #eef6ee}
+  .p-actions{display:flex;gap:8px;align-items:center;margin-top:8px}
+  .likes{color:var(--accent)}
+  .comments{font-size:13px;color:var(--muted);margin-top:8px}
+  .follow-btn{background:linear-gradient(135deg,#fff,#fff);border:1px solid #e8e8e8;color:#062226;padding:6px 10px}
+  .user-row{display:flex;gap:8px;align-items:center;margin-top:8px}
+  .img-preview{max-width:100%;border-radius:8px;margin-top:8px}
+  .right .section{margin-bottom:12px}
+  @media (max-width:1000px){ .app{grid-template-columns:1fr; } .left,.right{order:2} .center{order:1} }
+</style>
+</head>
+<body>
+  <div class="app">
+    <div class="left">
+      <div class="profile-card">
+        <div class="avatar" id="avatarPreview">U</div>
+        <h3 id="profileName">Guest</h3>
+        <div class="small" id="profileBio">Not signed in</div>
+      </div>
+
+      <div style="margin-top:12px">
+        <label>Sign in / Create account</label>
+        <input id="userName" placeholder="Your name" />
+        <input id="userHandle" placeholder="Handle (unique)" />
+        <textarea id="userBio" rows="2" placeholder="Short bio..."></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button id="createBtn">Create / Sign In</button>
+          <button id="signOutBtn" style="background:#eee;color:#111;display:none">Sign Out</button>
+        </div>
+      </div>
+
+      <div style="margin-top:12px">
+        <h4>People</h4>
+        <div id="peopleList" class="small"></div>
+      </div>
+    </div>
+
+    <div class="center">
+      <h2>Feed</h2>
+      <div class="post-form">
+        <textarea id="postText" rows="3" placeholder="What's happening?"></textarea>
+        <input id="postImage" type="file" accept="image/*" />
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="visibility"><option value="public">Public</option><option value="followers">Followers only</option></select>
+          <button id="postBtn">Post</button>
+        </div>
+      </div>
+
+      <div class="feed" id="feed"></div>
+    </div>
+
+    <div class="right">
+      <div class="section">
+        <h4>Search</h4>
+        <input id="searchInput" placeholder="Search posts or users..." />
+      </div>
+
+      <div class="section">
+        <h4>Notifications</h4>
+        <div id="notifications" class="small">No notifications.</div>
+      </div>
+
+      <div class="section">
+        <h4>Your Following</h4>
+        <div id="followingList" class="small">Not following anyone.</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/*
+  Frontend Social Media Demo:
+  - Users stored in localStorage, posts saved there (image -> dataURL).
+  - Basic features: create account, post (text+image), like, comment, follow/unfollow, simple feed & search.
+*/
+
+const LS = 'task05_social_v1'
+let store = {
+  users: {},      // handle -> {name, handle, bio, avatar? , following: [handles], followers: [handles]}
+  posts: [],      // {id, authorHandle, text, imageDataURL, ts, likes:[], comments: [ {by, text, ts} ], visibility}
+  current: null
+}
+
+function load(){ const r = localStorage.getItem(LS); if(r) try{ store = JSON.parse(r) }catch(e){} }
+function save(){ localStorage.setItem(LS, JSON.stringify(store)) }
+load()
+
+// seed demo if empty
+if(Object.keys(store.users).length === 0){
+  store.users['alice'] = {name:'Alice', handle:'alice', bio:'Local artist', following:[], followers:[]}
+  store.users['bob'] = {name:'Bob', handle:'bob', bio:'Coffee lover', following:[], followers:[]}
+  store.posts.unshift({id:'p_'+Date.now(), authorHandle:'alice', text:'Hello world — my first post!', imageDataURL:null, ts:Date.now()-3600*1000, likes:[], comments:[], visibility:'public'})
+  save()
+}
+
+// elements
+const profileName = document.getElementById('profileName'), profileBio = document.getElementById('profileBio'), avatarPreview = document.getElementById('avatarPreview')
+const userName = document.getElementById('userName'), userHandle = document.getElementById('userHandle'), userBio = document.getElementById('userBio')
+const createBtn = document.getElementById('createBtn'), signOutBtn = document.getElementById('signOutBtn')
+const postText = document.getElementById('postText'), postImage = document.getElementById('postImage'), postBtn = document.getElementById('postBtn')
+const feedEl = document.getElementById('feed'), peopleList = document.getElementById('peopleList'), searchInput = document.getElementById('searchInput')
+const notifications = document.getElementById('notifications'), followingList = document.getElementById('followingList')
+
+// helpers
+function uid(n=6){ return 'id_'+Math.random().toString(36).slice(2,2+n) }
+function timeago(ts){ const d=(Date.now()-ts)/1000; if(d<60) return `${Math.floor(d)}s`; if(d<3600) return `${Math.floor(d/60)}m`; if(d<86400) return `${Math.floor(d/3600)}h`; return `${Math.floor(d/86400)}d` }
+
+function renderProfile(){
+  if(!store.current){ profileName.textContent='Guest'; profileBio.textContent='Not signed in'; avatarPreview.textContent='G'; signOutBtn.style.display='none'; createBtn.textContent='Create / Sign In'; return }
+  const u = store.users[store.current]
+  profileName.textContent = u.name + ' (@'+u.handle+')'
+  profileBio.textContent = u.bio || ''
+  avatarPreview.textContent = (u.name||u.handle||'U').slice(0,1).toUpperCase()
+  signOutBtn.style.display = ''
+  createBtn.textContent = 'Update Profile'
+}
+function renderPeople(){
+  peopleList.innerHTML = ''
+  Object.values(store.users).forEach(u=>{
+    const div = document.createElement('div'); div.className='user-row'
+    div.innerHTML = `<div style="font-weight:800">${u.name} <span class="small">@${u.handle}</span></div>`
+    const btn = document.createElement('button'); btn.className='follow-btn'; btn.textContent = (store.current && store.users[store.current].following.includes(u.handle)) ? 'Unfollow' : 'Follow'
+    btn.onclick = ()=> toggleFollow(u.handle)
+    if(store.current && u.handle === store.current) btn.style.display = 'none'
+    div.appendChild(btn); peopleList.appendChild(div)
+  })
+  renderFollowing()
+}
+function renderFollowing(){
+  if(!store.current){ followingList.innerHTML='Not following anyone.'; return }
+  const f = store.users[store.current].following
+  followingList.innerHTML = f.length ? f.join(', ') : 'Not following anyone.'
+}
+
+function toggleFollow(handle){
+  if(!store.current) return alert('Sign in first')
+  const me = store.users[store.current]
+  if(me.following.includes(handle)){
+    me.following = me.following.filter(h=>h!==handle)
+    store.users[handle].followers = store.users[handle].followers.filter(h=>h!==me.handle)
+  } else {
+    me.following.push(handle)
+    store.users[handle].followers.push(me.handle)
+  }
+  save(); renderPeople(); renderFeed()
+}
+
+createBtn.addEventListener('click', ()=>{
+  const name = userName.value.trim(), handle = userHandle.value.trim().toLowerCase(), bio = userBio.value.trim()
+  if(!name || !handle) return alert('Provide name and handle')
+  if(!store.users[handle]) store.users[handle] = {name, handle, bio, following:[], followers:[]}
+  else { store.users[handle].name = name; store.users[handle].bio = bio }
+  store.current = handle
+  userName.value = ''; userHandle.value=''; userBio.value=''
+  save(); renderProfile(); renderPeople(); renderFeed()
+})
+
+signOutBtn.addEventListener('click', ()=>{
+  store.current = null; save(); renderProfile(); renderPeople(); renderFeed()
+})
+
+postBtn.addEventListener('click', async ()=>{
+  if(!store.current) return alert('Sign in to post')
+  const text = postText.value.trim(); if(!text && !postImage.files.length) return alert('Write or attach something')
+  let dataURL = null
+  if(postImage.files.length){
+    dataURL = await toDataURL(postImage.files[0])
+  }
+  const p = {id: uid(8), authorHandle: store.current, text, imageDataURL: dataURL, ts: Date.now(), likes: [], comments: [], visibility: 'public'}
+  store.posts.unshift(p); save()
+  postText.value=''; postImage.value = ''
+  renderFeed(); showNotification('Posted successfully')
+})
+
+function toDataURL(file){ return new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=rej; fr.readAsDataURL(file) }) }
+
+function renderFeed(filter=''){
+  feedEl.innerHTML = ''
+  let posts = store.posts.slice()
+  // filter by search
+  if(filter) posts = posts.filter(p => p.text.toLowerCase().includes(filter) || p.authorHandle.toLowerCase().includes(filter))
+  posts.forEach(p=>{
+    const u = store.users[p.authorHandle] || {name:p.authorHandle, handle:p.authorHandle}
+    const div = document.createElement('div'); div.className='post'
+    div.innerHTML = `<div style="display:flex;gap:10px;align-items:center"><div style="width:44px;height:44px;border-radius:999px;background:#f7fff7;display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--accent)">${u.name.slice(0,1).toUpperCase()}</div><div><div style="font-weight:800">${u.name} <span class="small">@${u.handle}</span></div><div class="small">${timeago(p.ts)}</div></div></div>
+      <div style="margin-top:8px">${escapeHTML(p.text)}</div>
+      ${p.imageDataURL ? `<img src="${p.imageDataURL}" class="img-preview" />` : ''}
+      <div class="p-actions">
+        <div style="display:flex;gap:8px;align-items:center"><button class="like-btn">${p.likes.includes(store.current)?'♥':'♡'}</button><div class="likes">${p.likes.length}</div></div>
+        <div style="margin-left:auto"><button class="comment-btn">Comment</button></div>
+      </div>
+      <div class="comments" id="c-${p.id}">${p.comments.length ? p.comments.map(c=>`<div><strong>${c.by}</strong> ${escapeHTML(c.text)} <span class="small">• ${timeago(c.ts)}</span></div>`).join('') : '<div class="muted small">No comments yet.</div>'}</div>`
+    feedEl.appendChild(div)
+
+    // attach listeners
+    div.querySelector('.like-btn').addEventListener('click', ()=>{
+      if(!store.current) return alert('Sign in to like')
+      if(p.likes.includes(store.current)) p.likes = p.likes.filter(h=>h!==store.current)
+      else p.likes.push(store.current)
+      save(); renderFeed(filter)
+    })
+    div.querySelector('.comment-btn').addEventListener('click', ()=>{
+      if(!store.current) return alert('Sign in to comment')
+      const text = prompt('Comment:'); if(!text) return
+      p.comments.push({by: store.current, text, ts: Date.now()}); save(); renderFeed(filter)
+    })
+  })
+  if(posts.length === 0) feedEl.innerHTML = '<div class="small muted">No posts yet.</div>'
+}
+
+function escapeHTML(s){ return (s+'').replace(/[&<>"']/g,c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])) }
+
+// search
+searchInput.addEventListener('input', (e)=> renderFeed(e.target.value.trim().toLowerCase()))
+
+// notifications
+function showNotification(txt){
+  notifications.textContent = txt
+  setTimeout(()=>{ if(notifications.textContent===txt) notifications.textContent = 'No notifications.' }, 3000)
+}
+
+// initialization render
+renderProfile(); renderPeople(); renderFeed(); renderFollowing()
+
+</script>
+</body>
+</html>
