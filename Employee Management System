@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Employee Management System — Secure</title>
+  <style>
+    /* --- Emerald & Bold Gold Theme --- */
+    :root{
+      --emerald:#006d3a;
+      --gold:#b8860b;
+      --gold-dark:#8b6508;
+      --bg-start:#013219;
+      --bg-end:#08321a;
+      --card:#ffffffee;
+      --muted:#6c757d;
+      --danger:#dc3545;
+    }
+    *{box-sizing:border-box}
+    body{
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      min-height:100vh;
+      margin:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+      background: linear-gradient(160deg,var(--bg-start) 0%, #052b14 45%, #052414 100%);
+      color:#0f1720;
+    }
+    .app {
+      width:100%;
+      max-width:1100px;
+      border-radius:18px;
+      overflow:hidden;
+      box-shadow: 0 30px 60px rgba(3,12,7,0.6);
+      display:grid;
+      grid-template-columns: 360px 1fr;
+      gap:0;
+      background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(245,245,245,0.98));
+    }
+
+    /* Left pane - Auth + Info */
+    .left {
+      padding:28px;
+      background:
+        radial-gradient(600px 200px at -10% -10%, rgba(184,134,11,0.08), transparent 10%),
+        linear-gradient(180deg, rgba(0,109,58,0.03), rgba(184,134,11,0.02));
+      border-right:4px solid rgba(0,0,0,0.03);
+    }
+    .brand {
+      display:flex;
+      gap:12px;
+      align-items:center;
+      margin-bottom:18px;
+    }
+    .logo {
+      width:52px;height:52px;border-radius:12px;
+      background: linear-gradient(135deg,var(--emerald),var(--gold));
+      box-shadow: 0 6px 18px rgba(184,134,11,0.24);
+      display:flex;align-items:center;justify-content:center;color:white;font-weight:800;
+      font-size:20px;
+    }
+    .brand h1{font-size:20px;margin:0}
+    .brand p{margin:0;color:var(--muted);font-size:13px}
+
+    /* Tabs */
+    .auth-tabs{
+      display:flex;
+      gap:10px;
+      margin:18px 0 8px 0;
+    }
+    .tab-btn{
+      flex:1;padding:10px;border-radius:30px;border:none;background:transparent;
+      cursor:pointer;font-weight:700;color:var(--muted);
+      transition:all .25s;
+    }
+    .tab-btn.active{background: linear-gradient(135deg,var(--emerald),var(--gold)); color:#fff; box-shadow: 0 10px 30px rgba(184,134,11,0.18);}
+
+    form .form-group{margin-bottom:12px}
+    label{display:block;font-weight:600;margin-bottom:6px;color:#143126;font-size:13px}
+    input[type="text"],input[type="email"],input[type="password"],select{
+      width:100%;padding:11px 12px;border-radius:10px;border:1px solid #e6e6e6;background:#fff;font-size:14px;
+      transition:box-shadow .18s, border-color .18s;
+    }
+    input:focus,select:focus{outline:none;border-color:var(--emerald);box-shadow:0 0 0 4px rgba(184,134,11,0.09)}
+    .submit-btn{
+      display:block;width:100%;padding:12px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--emerald),var(--gold));
+      color:white;font-weight:800;font-size:16px;cursor:pointer;margin-top:8px;box-shadow:0 10px 30px rgba(184,134,11,0.16);
+    }
+    .submit-btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+
+    .message{padding:10px;border-radius:10px;margin:10px 0;font-weight:600;text-align:center}
+    .msg-success{background:#eaf6ed;color:#0a3b1e;border:1px solid rgba(0,109,58,0.12)}
+    .msg-error{background:#fdecea;color:#6b1215;border:1px solid rgba(220,53,69,0.12)}
+
+    /* Right pane - Dashboard */
+    .right {
+      padding:30px;
+      background:
+        linear-gradient(180deg, rgba(0,109,58,0.02), rgba(184,134,11,0.01));
+    }
+    .topbar{
+      display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;
+    }
+    .welcome h2{margin:0;font-size:20px;color:#05331f}
+    .meta{color:var(--muted);font-size:13px}
+
+    .controls{display:flex;gap:12px;align-items:center}
+    .btn {
+      padding:8px 12px;border-radius:10px;border:1px solid rgba(0,0,0,0.05);background:#fff;cursor:pointer;font-weight:700;
+      box-shadow:0 6px 14px rgba(2,6,3,0.04)
+    }
+    .btn.primary{
+      background:linear-gradient(135deg,var(--emerald),var(--gold));color:#fff;border:none;box-shadow:0 10px 30px rgba(184,134,11,0.12);
+    }
+    .btn.warn{background:#fff3e0;border:1px solid rgba(184,134,11,0.08);color:var(--gold-dark)}
+    .logout-btn{background:var(--gold);color:#fff;border:none;padding:8px 14px;border-radius:10px;font-weight:700;cursor:pointer}
+
+    /* Employee Table */
+    .card{background:var(--card);padding:18px;border-radius:12px;box-shadow:0 14px 30px rgba(3,12,7,0.06)}
+    .card h3{margin:0 0 10px 0;color:#093222}
+    .toolbar{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+    .search{flex:1}
+    .table{width:100%;border-collapse:collapse}
+    .table th, .table td{padding:10px 8px;text-align:left;border-bottom:1px solid #eef3ee;font-size:14px}
+    .table th{color:#08321a;font-weight:700}
+    .empty{padding:28px;text-align:center;color:var(--muted)}
+
+    .badge{display:inline-block;padding:6px 10px;border-radius:999px;font-weight:700;font-size:12px}
+    .badge.role-admin{background:var(--gold);color:#fff}
+    .badge.role-user{background:var(--emerald);color:#fff}
+    .actions button{margin-right:6px}
+
+    /* Form layout */
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .small{font-size:13px;color:var(--muted)}
+
+    /* modal */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(1,3,2,0.45);display:flex;align-items:center;justify-content:center;z-index:50}
+    .modal{width:640px;max-width:95%;background:var(--card);border-radius:12px;padding:18px}
+    .modal h4{margin:0 0 10px 0}
+    .modal .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+
+    /* responsive */
+    @media (max-width:920px){
+      .app{grid-template-columns:1fr;max-width:920px}
+      .left{order:2}
+      .right{order:1}
+    }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <div class="left">
+      <div class="brand">
+        <div class="logo">EMS</div>
+        <div>
+          <h1>Secure Authentication</h1>
+          <p>Employee Management System</p>
+        </div>
+      </div>
+
+      <div class="auth-tabs" role="tablist">
+        <button class="tab-btn active" id="tab-login">Login</button>
+        <button class="tab-btn" id="tab-register">Register</button>
+      </div>
+
+      <div id="messageArea" style="min-height:38px"></div>
+
+      <!-- Login form -->
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="loginEmail">Email</label>
+          <input id="loginEmail" type="email" required />
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">Password</label>
+          <input id="loginPassword" type="password" required />
+        </div>
+        <button class="submit-btn" type="submit">Sign In</button>
+      </form>
+
+      <!-- Register form (hidden by default) -->
+      <form id="registerForm" style="display:none">
+        <div class="form-group">
+          <label for="regName">Full Name</label>
+          <input id="regName" type="text" required />
+        </div>
+        <div class="form-group">
+          <label for="regEmail">Email</label>
+          <input id="regEmail" type="email" required />
+        </div>
+        <div class="form-group">
+          <label for="regPassword">Password</label>
+          <input id="regPassword" type="password" required />
+        </div>
+        <div class="form-group">
+          <label for="regRole">Role</label>
+          <select id="regRole">
+            <option value="user">User</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <button class="submit-btn" type="submit">Create Account</button>
+      </form>
+
+      <div style="margin-top:18px;color:var(--muted);font-size:13px">
+        <strong>Demo credentials</strong><br>
+        Admin: <code>admin@demo.com</code> / <code>admin123</code><br>
+        User: <code>user@demo.com</code> / <code>user123</code>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="topbar">
+        <div class="welcome">
+          <h2>Employee Management</h2>
+          <div class="meta">Create, Read, Update &amp; Delete employee records</div>
+        </div>
+
+        <div class="controls" id="controlsTop">
+          <!-- filled dynamically -->
+        </div>
+      </div>
+
+      <div class="card" id="mainCard">
+        <!-- Dynamic dashboard content -->
+        <div id="dashboardContent">
+          <div class="empty">Sign in to manage employee records.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal template -->
+  <div id="modalRoot" style="display:none"></div>
+
+  <script>
+    /*******************************
+     * Simple in-browser EMS
+     * - localStorage persistence
+     * - simulated auth with roles
+     * - CRUD employees
+     *******************************/
+
+    // ---------- Utilities ----------
+    function $(sel){return document.querySelector(sel)}
+    function create(tag,cls){const e=document.createElement(tag); if(cls) e.className=cls; return e}
+    function uuid(){return 'id-'+Math.random().toString(36).slice(2,9)}
+
+    // simple hash (not secure) for demo only
+    function simpleHash(s){
+      let h=0; for(let i=0;i<s.length;i++){h=(h<<5)-h + s.charCodeAt(i); h=h&h}
+      return Math.abs(h).toString(36)
+    }
+
+    function saveStore(){ localStorage.setItem('ems_store', JSON.stringify(store)) }
+    function loadStore(){
+      const raw = localStorage.getItem('ems_store')
+      if(raw) return JSON.parse(raw)
+      // default demo data
+      return {
+        users:[
+          {id:1,name:'Admin User',email:'admin@demo.com',password:simpleHash('admin123'),role:'admin',createdAt:Date.now()},
+          {id:2,name:'Regular User',email:'user@demo.com',password:simpleHash('user123'),role:'user',createdAt:Date.now()}
+        ],
+        employees:[
+          {id:uuid(), name:'Alice Johnson', email:'alice@company.com', phone:'+1-555-0101', position:'Product Manager', department:'Product', createdAt:Date.now()},
+          {id:uuid(), name:'Bob Smith', email:'bob@company.com', phone:'+1-555-0102', position:'Developer', department:'Engineering', createdAt:Date.now()}
+        ],
+        currentUserId: null
+      }
+    }
+
+    // ---------- Data store ----------
+    let store = loadStore()
+    saveStore()
+
+    // ---------- UI elements ----------
+    const loginForm = $('#loginForm')
+    const registerForm = $('#registerForm')
+    const tabLogin = $('#tab-login'), tabRegister = $('#tab-register')
+    const messageArea = $('#messageArea')
+    const mainCard = $('#mainCard')
+    const dashboardContent = $('#dashboardContent')
+    const controlsTop = $('#controlsTop')
+    const modalRoot = $('#modalRoot')
+
+    // ---------- Helpers ----------
+    function showMessage(text,type='success',ttl=3000){
+      messageArea.innerHTML = ''
+      const div = create('div','message '+(type==='error'?'msg-error':'msg-success'))
+      div.textContent = text
+      messageArea.appendChild(div)
+      if(ttl) setTimeout(()=>{ if(messageArea.contains(div)) div.remove() }, ttl)
+    }
+
+    function clearForms(){
+      loginForm.reset(); registerForm.reset()
+    }
+
+    function findUserByEmail(email){
+      return store.users.find(u => u.email.toLowerCase() === email.toLowerCase())
+    }
+
+    function requireAuth(){ return store.currentUserId ? store.users.find(u=>u.id===store.currentUserId) : null }
+
+    // ---------- Auth logic ----------
+    loginForm.addEventListener('submit', (e)=>{
+      e.preventDefault()
+      const email = $('#loginEmail').value.trim()
+      const pass = $('#loginPassword').value
+      const user = findUserByEmail(email)
+      if(!user){ showMessage('User not found', 'error'); return }
+      if(user.password !== simpleHash(pass)){ showMessage('Invalid password','error'); return }
+      store.currentUserId = user.id
+      saveStore()
+      showMessage('Login successful', 'success')
+      renderDashboard()
+    })
+
+    registerForm.addEventListener('submit',(e)=>{
+      e.preventDefault()
+      const name = $('#regName').value.trim()
+      const email = $('#regEmail').value.trim()
+      const pass = $('#regPassword').value
+      const role = $('#regRole').value
+      if(!name || !email || !pass){ showMessage('Please fill all fields','error'); return }
+      if(findUserByEmail(email)){ showMessage('Email already registered','error'); return }
+      if(pass.length < 6){ showMessage('Password must be at least 6 chars','error'); return }
+      const newUser = {id: Date.now(), name, email, password: simpleHash(pass), role, createdAt:Date.now()}
+      store.users.push(newUser); saveStore()
+      showMessage('Account created — you can login now', 'success')
+      // switch to login
+      switchTo('login')
+    })
+
+    // Tabs
+    function switchTo(tab){
+      if(tab === 'login'){
+        loginForm.style.display = ''; registerForm.style.display = 'none'
+        tabLogin.classList.add('active'); tabRegister.classList.remove('active')
+      } else {
+        loginForm.style.display = 'none'; registerForm.style.display = ''
+        tabLogin.classList.remove('active'); tabRegister.classList.add('active')
+      }
+    }
+    tabLogin.addEventListener('click', ()=>switchTo('login'))
+    tabRegister.addEventListener('click', ()=>switchTo('register'))
+
+    // ---------- Employees CRUD ----------
+    function openModal(contentHtml){
+      modalRoot.innerHTML = ''
+      modalRoot.style.display = 'flex'
+      const back = create('div','modal-backdrop')
+      const modal = create('div','modal')
+      modal.innerHTML = contentHtml
+      back.appendChild(modal)
+      modalRoot.appendChild(back)
+      // close on click outside
+      back.addEventListener('click', (ev)=>{
+        if(ev.target === back){ closeModal() }
+      })
+    }
+    function closeModal(){ modalRoot.innerHTML=''; modalRoot.style.display='none' }
+
+    function renderDashboard(){
+      const user = requireAuth()
+      controlsTop.innerHTML = ''
+      if(!user){
+        dashboardContent.innerHTML = '<div class="empty">Sign in to manage employee records.</div>'
+        return
+      }
+
+      // Top controls
+      const info = create('div'); info.innerHTML = `<div style="font-weight:800">${user.name}</div><div class="small">${user.email} • ${user.role.toUpperCase()}</div>`
+      controlsTop.appendChild(info)
+
+      const spacer = create('div'); spacer.style.width='8px'; controlsTop.appendChild(spacer)
+
+      const btnAdd = create('button','btn primary'); btnAdd.textContent='Add Employee'
+      btnAdd.onclick = ()=>openEmployeeForm()
+      if(user.role === 'admin') controlsTop.appendChild(btnAdd)
+      else btnAdd.disabled = true
+
+      const btnExport = create('button','btn'); btnExport.textContent='Export JSON'
+      btnExport.onclick = ()=>downloadJSON()
+      controlsTop.appendChild(btnExport)
+
+      const btnLogout = create('button','logout-btn'); btnLogout.textContent='Logout'
+      btnLogout.onclick = ()=>{ store.currentUserId = null; saveStore(); renderDashboard(); showMessage('Logged out','success') }
+      controlsTop.appendChild(btnLogout)
+
+      // Main employees view
+      renderEmployeeList()
+    }
+
+    function renderEmployeeList(filter=''){
+      const user = requireAuth()
+      const employees = store.employees.filter(emp => {
+        if(!filter) return true
+        const q = filter.toLowerCase()
+        return (emp.name+emp.email+emp.phone+emp.position+emp.department).toLowerCase().includes(q)
+      })
+      let html = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h3>Employees</h3>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input id="searchInput" placeholder="Search employees..." style="padding:8px;border-radius:8px;border:1px solid #e9e9e9" />
+          </div>
+        </div>
+      `
+
+      if(!employees.length){
+        html += `<div class="empty">No employees found.</div>`
+        dashboardContent.innerHTML = html
+        $('#searchInput') && $('#searchInput').addEventListener('input', (e)=>renderEmployeeList(e.target.value))
+        return
+      }
+
+      html += `<div style="overflow:auto"><table class="table"><thead><tr>
+        <th>Name</th><th>Position</th><th>Department</th><th>Email</th><th>Phone</th><th style="width:165px">Actions</th>
+      </tr></thead><tbody>`
+      for(const emp of employees){
+        html += `<tr>
+          <td style="font-weight:700">${emp.name}</td>
+          <td>${emp.position||'-'}</td>
+          <td>${emp.department||'-'}</td>
+          <td>${emp.email}</td>
+          <td>${emp.phone||'-'}</td>
+          <td class="actions">
+            <button class="btn" data-act="view" data-id="${emp.id}">View</button>
+            <button class="btn" data-act="edit" data-id="${emp.id}" ${requireAuth().role!=='admin'?'disabled':''}>Edit</button>
+            <button class="btn warn" data-act="delete" data-id="${emp.id}" ${requireAuth().role!=='admin'?'disabled':''}>Delete</button>
+          </td>
+        </tr>`
+      }
+      html += `</tbody></table></div>`
+      dashboardContent.innerHTML = html
+
+      // attach search
+      $('#searchInput').addEventListener('input', (e)=>renderEmployeeList(e.target.value))
+
+      // attach action handlers
+      dashboardContent.querySelectorAll('button[data-act]').forEach(btn=>{
+        btn.addEventListener('click',(e)=>{
+          const act = btn.getAttribute('data-act'), id = btn.getAttribute('data-id')
+          if(act==='view') viewEmployee(id)
+          if(act==='edit') openEmployeeForm(id)
+          if(act==='delete') confirmDelete(id)
+        })
+      })
+    }
+
+    function viewEmployee(id){
+      const emp = store.employees.find(x=>x.id===id)
+      if(!emp) return showMessage('Record not found','error')
+      const h = `
+        <h4>${emp.name}</h4>
+        <div class="small">Position: ${emp.position||'-'}</div>
+        <div class="small">Department: ${emp.department||'-'}</div>
+        <div style="margin-top:8px"><strong>Email:</strong> ${emp.email}</div>
+        <div><strong>Phone:</strong> ${emp.phone||'-'}</div>
+        <div style="margin-top:10px;color:var(--muted);font-size:13px">Added: ${new Date(emp.createdAt).toLocaleString()}</div>
+        <div style="margin-top:12px" class="actions">
+          <button class="btn" id="closeView">Close</button>
+        </div>
+      `
+      openModal(h)
+      $('#closeView').addEventListener('click', closeModal)
+    }
+
+    function openEmployeeForm(id){
+      const editing = !!id
+      const emp = editing ? store.employees.find(x=>x.id===id) : {name:'',email:'',phone:'',position:'',department:''}
+      const h = `
+        <h4>${editing ? 'Edit' : 'Add'} Employee</h4>
+        <div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <label>Name</label>
+              <input id="e_name" type="text" value="${emp.name || ''}" />
+            </div>
+            <div>
+              <label>Email</label>
+              <input id="e_email" type="email" value="${emp.email || ''}" />
+            </div>
+            <div>
+              <label>Phone</label>
+              <input id="e_phone" type="text" value="${emp.phone || ''}" />
+            </div>
+            <div>
+              <label>Position</label>
+              <input id="e_position" type="text" value="${emp.position || ''}" />
+            </div>
+            <div style="grid-column:1 / -1">
+              <label>Department</label>
+              <input id="e_department" type="text" value="${emp.department || ''}" />
+            </div>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn" id="cancelEmp">Cancel</button>
+          <button class="btn primary" id="saveEmp">${editing ? 'Save Changes' : 'Add Employee'}</button>
+        </div>
+      `
+      openModal(h)
+      $('#cancelEmp').addEventListener('click', closeModal)
+      $('#saveEmp').addEventListener('click', ()=>{
+        // validate
+        const name = $('#e_name').value.trim()
+        const email = $('#e_email').value.trim()
+        const phone = $('#e_phone').value.trim()
+        const position = $('#e_position').value.trim()
+        const department = $('#e_department').value.trim()
+        if(!name || !email){ return showMessage('Name & Email are required','error') }
+        // email simple validation
+        if(!/^\S+@\S+\.\S+$/.test(email)){ return showMessage('Please enter a valid email','error') }
+
+        // if editing, update
+        if(editing){
+          const idx = store.employees.findIndex(x=>x.id===id)
+          if(idx===-1){ showMessage('Record not found','error'); closeModal(); return }
+          store.employees[idx] = {...store.employees[idx], name, email, phone, position, department}
+          saveStore()
+          showMessage('Employee updated','success')
+          closeModal()
+          renderEmployeeList()
+        } else {
+          // create new
+          const newEmp = {id: uuid(), name, email, phone, position, department, createdAt: Date.now()}
+          store.employees.unshift(newEmp)
+          saveStore()
+          showMessage('Employee created','success')
+          closeModal()
+          renderEmployeeList()
+        }
+      })
+    }
+
+    function confirmDelete(id){
+      const emp = store.employees.find(x=>x.id===id)
+      if(!emp) return showMessage('Record not found','error')
+      const h = `<h4>Delete Employee</h4>
+        <div>Are you sure you want to delete <strong>${emp.name}</strong>? This action cannot be undone.</div>
+        <div class="actions">
+          <button class="btn" id="cancelDel">Cancel</button>
+          <button class="btn warn" id="confirmDel">Delete</button>
+        </div>`
+      openModal(h)
+      $('#cancelDel').addEventListener('click', closeModal)
+      $('#confirmDel').addEventListener('click', ()=>{
+        store.employees = store.employees.filter(x=>x.id!==id)
+        saveStore()
+        closeModal()
+        showMessage('Employee deleted','success')
+        renderEmployeeList()
+      })
+    }
+
+    function downloadJSON(){
+      const d = {employees: store.employees, users: store.users}
+      const blob = new Blob([JSON.stringify(d, null, 2)], {type:'application/json'})
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url; a.download = 'ems-export.json'
+      a.click()
+      URL.revokeObjectURL(url)
+    }
+
+    // ---------- Initialization ----------
+    function initializeUI(){
+      // restore session if present
+      if(store.currentUserId) {
+        // ensure user exists
+        if(!store.users.find(u=>u.id===store.currentUserId)) store.currentUserId=null
+      }
+      renderDashboard()
+    }
+
+    // expose small API for dev/test in console
+    window.ems = {
+      store, renderDashboard, openEmployeeForm
+    }
+
+    initializeUI()
+  </script>
+</body>
+</html>
